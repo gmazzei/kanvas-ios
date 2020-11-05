@@ -52,6 +52,16 @@ public protocol EditorControllerDelegate: class {
     ///
     /// - Returns: the blog switcher.
     func getBlogSwitcher() -> UIView
+    /// Called when the Post Button is pressed to indicate whether export should occur
+    /// The return value indicates whether the export should be run
+    /// This is partly temporary, I think the export functionality should be passed into this controller to decouple things
+    func shouldExport() -> Bool
+}
+
+extension EditorControllerDelegate {
+    public func shouldExport() -> Bool {
+        return true
+    }
 }
 
 private struct Constants {
@@ -151,13 +161,14 @@ public final class EditorViewController: UIViewController, MediaPlayerController
         }
         set {
             collectionController.shouldExportMediaAsGIF = newValue
+            if let editionOption = openedMenu, let cell = selectedCell {
+                let image = KanvasCameraImages.editionOptionTypes(editionOption, enabled: newValue)
+                cell.setImage(image)
+            }
         }
     }
 
-    private lazy var player: MediaPlayer = {
-        return MediaPlayer(renderer: Renderer(settings: settings, metalContext: metalContext))
-    }()
-    
+    private let player: MediaPlayer
     private var filterType: FilterType? {
         didSet {
             player.filterType = filterType
@@ -176,6 +187,8 @@ public final class EditorViewController: UIViewController, MediaPlayerController
 
     public weak var delegate: EditorControllerDelegate?
     
+    private var exportCompletion: ((Result<(UIImage?, URL?, MediaInfo), Error>) -> Void)?
+
     @available(*, unavailable, message: "use init(settings:, segments:) instead")
     required public init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -272,7 +285,11 @@ public final class EditorViewController: UIViewController, MediaPlayerController
         self.stickerProvider = stickerProvider
         self.quickBlogSelectorCoordinater = quickBlogSelectorCoordinator
 
+        self.player = MediaPlayer(renderer: Renderer(settings: settings, metalContext: MetalContext.createContext()))
         super.init(nibName: .none, bundle: .none)
+
+        editorView.delegate = self
+        player.playerView = editorView.playerView
         
         self.player.delegate = self
 
@@ -343,15 +360,12 @@ public final class EditorViewController: UIViewController, MediaPlayerController
 
     /// Loads the media into the player and starts it.
     private func startPlayerFromSegments() {
-        let media: [MediaPlayerContent] = segments.compactMap {segment in
-            if let image = segment.image {
+        let media: [MediaPlayerContent] = segments.compactMap { segment in
+            switch segment {
+            case .image(let image, _, _, _):
                 return .image(image, segment.timeInterval)
-            }
-            else if let url = segment.videoURL {
+            case .video(let url, _):
                 return .video(url)
-            }
-            else {
-                return nil
             }
         }
         player.play(media: media)
@@ -531,7 +545,9 @@ public final class EditorViewController: UIViewController, MediaPlayerController
     }
 
     func didTapPostButton() {
-        startExporting(action: .post)
+        if delegate?.shouldExport() ?? true {
+            startExporting(action: .post)
+        }
         analyticsProvider?.logPostFromDashboard()
     }
 
@@ -600,24 +616,30 @@ public final class EditorViewController: UIViewController, MediaPlayerController
         return delegate.getQuickPostButton(enableLongPress: enableLongPress)
     }
     
+    func restartPlayback() {
+        player.stop()
+        startPlayerFromSegments()
+    }
+    
     func getBlogSwitcher() -> UIView {
         guard let delegate = delegate else { return UIView() }
         return delegate.getBlogSwitcher()
     }
 
+    func stopPlayback() {
+        player.stop()
+    }
+    
     // MARK: - Media Exporting
 
     private func startExporting(action: KanvasExportAction) {
         player.stop()
         showLoading()
-        if segments.count == 1, let firstSegment = segments.first, let image = firstSegment.image {
+        if segments.count == 1, let firstSegment = segments.first, case CameraSegment.image(let image, _, _, _) = firstSegment {
             // If the camera mode is .stopMotion, .normal or .stitch (.video) and the `exportStopMotionPhotoAsVideo` is true,
             // then single photos from that mode should still export as video.
-            if let cameraMode = cameraMode, cameraMode.group == .video && settings.exportStopMotionPhotoAsVideo {
-                assetsHandler.ensureAllImagesHaveVideo(segments: segments) { segments in
-                    guard let videoURL = segments.first?.videoURL else { return }
-                    self.createFinalVideo(videoURL: videoURL, mediaInfo: firstSegment.mediaInfo, exportAction: action)
-                }
+            if let cameraMode = cameraMode, cameraMode.group == .video && settings.exportStopMotionPhotoAsVideo, let videoURL = firstSegment.videoURL {
+                createFinalVideo(videoURL: videoURL, mediaInfo: firstSegment.mediaInfo, exportAction: action)
             }
             else {
                 createFinalImage(image: image, mediaInfo: firstSegment.mediaInfo, exportAction: action)
@@ -659,6 +681,11 @@ public final class EditorViewController: UIViewController, MediaPlayerController
         }
     }
 
+    public func export(_ completion: @escaping (Result<(UIImage?, URL?, MediaInfo), Error>) -> Void) {
+        exportCompletion = completion
+        startExporting(action: .post)
+    }
+
     private func createFinalGIF(segments: [CameraSegment], mediaInfo: MediaInfo, exportAction: KanvasExportAction) {
         let exporter = exporterClass.init(settings: settings)
         exporter.filterType = filterType ?? .passthrough
@@ -672,6 +699,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                 if let gifURL = gifURL {
                     size = GIFDecoderFactory.main().size(of: gifURL)
                 }
+                self.exportCompletion?(.success((nil, gifURL, mediaInfo)))
                 self.delegate?.didFinishExportingFrames(url: gifURL, size: size, info: mediaInfo, action: exportAction, mediaChanged: self.mediaChanged)
                 performUIUpdate {
                     self.hideLoading()
@@ -702,6 +730,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                     return
                 }
                 let size = GIFDecoderFactory.main().size(of: gifURL)
+                self.exportCompletion?(.success((nil, gifURL, mediaInfo)))
                 self.delegate?.didFinishExportingFrames(url: gifURL, size: size, info: mediaInfo, action: exportAction, mediaChanged: self.mediaChanged)
                 performUIUpdate {
                     self.hideLoading()
@@ -714,6 +743,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
         let exporter = exporterClass.init(settings: settings)
         exporter.filterType = filterType ?? .passthrough
         exporter.imageOverlays = imageOverlays()
+        exporter.filterType = filterType ?? .passthrough
         exporter.export(video: videoURL, mediaInfo: mediaInfo) { (exportedVideoURL, _) in
             performUIUpdate {
                 guard let url = exportedVideoURL else {
@@ -721,6 +751,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                     self.handleExportError()
                     return
                 }
+                self.exportCompletion?(.success((nil, url, mediaInfo)))
                 self.delegate?.didFinishExportingVideo(url: url, info: mediaInfo, action: exportAction, mediaChanged: self.mediaChanged)
                 self.hideLoading()
             }
@@ -743,6 +774,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                     self.handleExportError()
                     return
                 }
+                self.exportCompletion?(.success((unwrappedImage, nil, mediaInfo)))
                 self.delegate?.didFinishExportingImage(image: unwrappedImage, info: mediaInfo, action: exportAction, mediaChanged: self.mediaChanged)
                 self.hideLoading()
             }

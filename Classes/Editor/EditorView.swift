@@ -188,8 +188,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
         guard let delegate = delegate else { return UIView() }
         return delegate.getBlogSwitcher()
     }()
-    
-    private weak var delegate: EditorViewDelegate?
+    weak var delegate: EditorViewDelegate?
     
     @available(*, unavailable, message: "use init() instead")
     required public init?(coder aDecoder: NSCoder) {

@@ -142,6 +142,10 @@ public struct CameraFeatures {
     /// GIF support
     /// This enables GIFs to be picked from the media picker, and exported from the Editor.
     public var gifs = false
+
+    /// Multi-Export support
+    /// This enables multiple images/videos to be taken, edited, and then exported
+    public var multipleExports = false
 }
 
 // A class that defines the settings for the Kanvas Camera
