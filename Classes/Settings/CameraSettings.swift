@@ -246,6 +246,10 @@ public struct CameraFeatures {
     /// Quick post button in Editor
     /// This shows a post button that makes quick options appear when long pressed
     public var showQuickPostButtonInEditor = DefaultCameraSettings.showQuickPostButtonInEditor
+
+    /// Main Action button in Editor
+    /// Whether to show the main action button in the editor
+    public var showMainActionButtonInEditor = DefaultCameraSettings.showMainActionButtonInEditor
     
     /// Long press for post button in Editor
     /// This enables the long press for the quick post button.
@@ -326,6 +330,7 @@ private struct DefaultCameraSettings {
     static let topButtonsSwapped: Bool = false
     static let crossIconInEditor: Bool = false
     static let showTagButtonInEditor: Bool = false
+    static let showMainActionButtonInEditor: Bool = true
     static let showQuickPostButtonInEditor: Bool = false
     static let enableQuickPostLongPress: Bool = false
     static let showBlogSwitcherInEditor: Bool = false

@@ -43,41 +43,16 @@ class MultiEditorViewController: UIViewController {
         
         selected = clipsController.getClips().indices.last
     }
-    
-    private let settings: CameraSettings
-    private let assetsHandler: AssetsHandlerType
-    private let exporterClass: MediaExporting.Type
-    private let gifEncoderClass: GIFEncoder.Type
-    private let cameraMode: CameraMode?
-    private let stickerProvider: StickerProvider?
-    private let analyticsProvider: KanvasCameraAnalyticsProvider?
-    private let quickBlogSelectorCoordinator: KanvasQuickBlogSelectorCoordinating?
 
     private var exportingEditors: [EditorViewController]?
 
     private weak var currentEditor: EditorViewController?
 
-    init(settings: CameraSettings,
-         segments: [CameraSegment],
-         assetsHandler: AssetsHandlerType,
-         exporterClass: MediaExporting.Type,
-         gifEncoderClass: GIFEncoder.Type,
-         cameraMode: CameraMode?,
-         stickerProvider: StickerProvider?,
-         analyticsProvider: KanvasCameraAnalyticsProvider?,
-         quickBlogSelectorCoordinator: KanvasQuickBlogSelectorCoordinating?,
+    init(segments: [CameraSegment],
          delegate: MultiEditorComposerDelegate,
          selected: Array<CameraSegment>.Index?) {
         
-        self.settings = settings
         self.segments = segments
-        self.assetsHandler = assetsHandler
-        self.exporterClass = exporterClass
-        self.gifEncoderClass = gifEncoderClass
-        self.cameraMode = cameraMode
-        self.stickerProvider = stickerProvider
-        self.analyticsProvider = analyticsProvider
-        self.quickBlogSelectorCoordinator = quickBlogSelectorCoordinator
         self.delegate = delegate
 
         exportHandler = MultiEditorExportHandler({ [weak delegate] result in

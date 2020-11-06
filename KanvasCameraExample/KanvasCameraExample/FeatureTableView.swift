@@ -36,6 +36,7 @@ class FeatureTableView: UIView, UITableViewDelegate, UITableViewDataSource, Feat
         case gifs(Bool)
         case editorShouldStartGIFMaker(Bool)
         case gifCameraShouldStartGIFMaker(Bool)
+        case multipleExport(Bool)
 
         var name: String {
             switch self {
@@ -81,6 +82,8 @@ class FeatureTableView: UIView, UITableViewDelegate, UITableViewDataSource, Feat
                 return "Editor auto-starts GIF Maker"
             case .gifCameraShouldStartGIFMaker:
                 return "GIF Camera auto-starts Editor GIF Maker"
+            case .multipleExport:
+                return "Multiple Export"
             }
         }
 
@@ -127,6 +130,8 @@ class FeatureTableView: UIView, UITableViewDelegate, UITableViewDataSource, Feat
             case .editorShouldStartGIFMaker(let enabled):
                 return enabled
             case .gifCameraShouldStartGIFMaker(let enabled):
+                return enabled
+            case .multipleExport(let enabled):
                 return enabled
             }
 
@@ -213,6 +218,8 @@ class FeatureTableView: UIView, UITableViewDelegate, UITableViewDataSource, Feat
             featuresData[indexPath.row] = .editorShouldStartGIFMaker(value)
         case .gifCameraShouldStartGIFMaker(_):
             featuresData[indexPath.row] = .gifCameraShouldStartGIFMaker(value)
+        case .multipleExport(_):
+            featuresData[indexPath.row] = .multipleExport(value)
         }
         delegate?.featureTableView(didUpdateFeature: featuresData[indexPath.row], withValue: value)
     }

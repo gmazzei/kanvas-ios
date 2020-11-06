@@ -52,9 +52,12 @@ public protocol EditorControllerDelegate: class {
     ///
     /// - Returns: the blog switcher.
     func getBlogSwitcher() -> UIView
-    /// Called when the Post Button is pressed to indicate whether export should occur
-    /// The return value indicates whether the export should be run
-    /// This is partly temporary, I think the export functionality should be passed into this controller to decouple things
+
+    /// Called whenever the Editor would normally export the media.
+    /// It is intended as an overide point for exporting multiple editors manually.
+    /// This is probably temporary, I think the export functionality should be passed into this controller to decouple things.
+    ///
+    /// - Returns: A `true`/`false` value indicating whether the export should be run. Defaults to `true` if unimplemented.
     func shouldExport() -> Bool
 }
 
@@ -88,6 +91,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                                     showQuickPostButton: settings.showQuickPostButtonInEditor,
                                     enableQuickPostLongPress: settings.enableQuickPostLongPress,
                                     showBlogSwitcher: settings.showBlogSwitcherInEditor,
+                                    showMainActionButton: settings.showMainActionButtonInEditor,
                                     quickBlogSelectorCoordinator: quickBlogSelectorCoordinater,
                                     metalContext: settings.features.metalPreview ? metalContext : nil)
         player.playerView = editorView.playerView
@@ -203,7 +207,8 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                                     settings: CameraSettings,
                                     stickerProvider: StickerProvider,
                                     analyticsProvider: KanvasCameraAnalyticsProvider) -> EditorViewController {
-        EditorViewController(settings: settings,
+        EditorViewController(delegate: nil,
+                             settings: settings,
                              segments: [.image(image, nil, nil, MediaInfo(source: .media_library))],
                              assetsHandler: CameraSegmentHandler(),
                              exporterClass: MediaExporter.self,
@@ -215,7 +220,8 @@ public final class EditorViewController: UIViewController, MediaPlayerController
     }
     
     public static func createEditor(for videoURL: URL, settings: CameraSettings, stickerProvider: StickerProvider) -> EditorViewController {
-        EditorViewController(settings: settings,
+        EditorViewController(delegate: nil,
+                             settings: settings,
                              segments: [.video(videoURL, MediaInfo(source: .media_library))],
                              assetsHandler: CameraSegmentHandler(),
                              exporterClass: MediaExporter.self,
@@ -246,7 +252,8 @@ public final class EditorViewController: UIViewController, MediaPlayerController
                      segments: [CameraSegment],
                      stickerProvider: StickerProvider,
                      analyticsProvider: KanvasCameraAnalyticsProvider) {
-        self.init(settings: settings,
+        self.init(delegate: nil,
+                  settings: settings,
                   segments: segments,
                   assetsHandler: CameraSegmentHandler(),
                   exporterClass: MediaExporter.self,
@@ -266,7 +273,8 @@ public final class EditorViewController: UIViewController, MediaPlayerController
     ///   - cameraMode: The camera mode that the preview was coming from, if any
     ///   - stickerProvider: Class that will provide the stickers in the editor.
     ///   - analyticsProvider: A class conforming to KanvasCameraAnalyticsProvider
-    init(settings: CameraSettings,
+    init(delegate: EditorControllerDelegate?,
+         settings: CameraSettings,
          segments: [CameraSegment],
          assetsHandler: AssetsHandlerType,
          exporterClass: MediaExporting.Type,
@@ -275,6 +283,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
          stickerProvider: StickerProvider?,
          analyticsProvider: KanvasCameraAnalyticsProvider?,
          quickBlogSelectorCoordinator: KanvasQuickBlogSelectorCoordinating?) {
+        self.delegate = delegate
         self.settings = settings
         self.originalSegments = segments
         self.assetsHandler = assetsHandler
@@ -545,9 +554,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
     }
 
     func didTapPostButton() {
-        if delegate?.shouldExport() ?? true {
-            startExporting(action: .post)
-        }
+        startExporting(action: .post)
         analyticsProvider?.logPostFromDashboard()
     }
 
@@ -633,6 +640,7 @@ public final class EditorViewController: UIViewController, MediaPlayerController
     // MARK: - Media Exporting
 
     private func startExporting(action: KanvasExportAction) {
+        guard delegate?.shouldExport() != false else { return }
         player.stop()
         showLoading()
         if segments.count == 1, let firstSegment = segments.first, case CameraSegment.image(let image, _, _, _) = firstSegment {

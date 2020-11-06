@@ -270,6 +270,7 @@ extension KanvasCameraExampleViewController: FeatureTableViewDelegate {
             .newCameraModes(settings.features.newCameraModes),
             .editorShouldStartGIFMaker(settings.editorShouldStartGIFMaker(mode: .normal)),
             .gifCameraShouldStartGIFMaker(settings.gifCameraShouldStartGIFMaker),
+            .multipleExport(settings.features.multipleExports),
         ]
     }
 
@@ -319,6 +320,8 @@ extension KanvasCameraExampleViewController: FeatureTableViewDelegate {
             settings.setEditorShouldStartGIFMaker(value)
         case .gifCameraShouldStartGIFMaker(_):
             settings.gifCameraShouldStartGIFMaker = value
+        case .multipleExport:
+            settings.features.multipleExports = value
         }
     }
 }
@@ -382,39 +385,41 @@ extension KanvasCameraExampleViewController: CameraControllerDelegate {
     func didEndDragInteraction() {
         
     }
-    
-    func didCreateMedia(_ cameraController: CameraController, media: KanvasCameraMedia?, exportAction: KanvasExportAction, error: Error?) {
-        if let error = error {
-            assertionFailure("Error creating Kanvas media: \(error)")
-            return
-        }
-        guard let media = media else {
-            assertionFailure("No error, but no media!?")
-            return
-        }
 
-        save(media: media) { err in
-            DispatchQueue.main.async {
-                if KanvasDevice.isRunningInSimulator == false {
-                    guard err == nil else {
-                        assertionFailure("Error saving to photo library")
-                        return
+    func didCreateMedia(_ cameraController: CameraController, media: [(KanvasCameraMedia?, Error?)], exportAction: KanvasExportAction) {
+        media.forEach { media, error in
+            if let error = error {
+                assertionFailure("Error creating Kanvas media: \(error)")
+                return
+            }
+            guard let media = media else {
+                assertionFailure("No error, but no media!?")
+                return
+            }
+
+            save(media: media) { err in
+                DispatchQueue.main.async {
+                    if KanvasDevice.isRunningInSimulator == false {
+                        guard err == nil else {
+                            assertionFailure("Error saving to photo library")
+                            return
+                        }
                     }
-                }
 
-                switch exportAction {
-                case .previewConfirm:
-                    self.dismissCamera()
-                case .confirm:
-                    self.dismissCamera()
-                case .post:
-                    self.dismissCamera()
-                case .save:
-                    break
-                case .postOptions:
-                    self.dismissCamera()
-                }
+                    switch exportAction {
+                    case .previewConfirm:
+                        self.dismissCamera()
+                    case .confirm:
+                        self.dismissCamera()
+                    case .post:
+                        self.dismissCamera()
+                    case .save:
+                        break
+                    case .postOptions:
+                        self.dismissCamera()
+                    }
 
+                }
             }
         }
     }

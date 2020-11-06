@@ -131,6 +131,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
     private let tagButton = UIButton()
     private let fakeOptionCell = UIImageView()
     private let showTagButton: Bool
+    private let showMainActionButton: Bool
     private let showQuickPostButton: Bool
     private let enableQuickPostLongPress: Bool
     private let showBlogSwitcher: Bool
@@ -203,6 +204,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
          showQuickPostButton: Bool,
          enableQuickPostLongPress: Bool,
          showBlogSwitcher: Bool,
+         showMainActionButton: Bool,
          quickBlogSelectorCoordinator: KanvasQuickBlogSelectorCoordinating?,
          metalContext: MetalContext?) {
         self.delegate = delegate
@@ -213,6 +215,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
         self.showQuickPostButton = showQuickPostButton
         self.enableQuickPostLongPress = enableQuickPostLongPress
         self.showBlogSwitcher = showBlogSwitcher
+        self.showMainActionButton = showMainActionButton
         self.quickBlogSelectorCoordinator = quickBlogSelectorCoordinator
         self.metalContext = metalContext
         super.init(frame: .zero)
@@ -236,6 +239,12 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
         case .postOptions:
             setupPostOptionsButton()
         }
+
+        if showMainActionButton == false {
+            confirmButton.isHidden = true
+            postButton.isHidden = true
+        }
+
         if showSaveButton {
             setupSaveButton()
         }
@@ -366,7 +375,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
         
         navigationContainer.addSubview(collectionContainer)
         collectionContainer.translatesAutoresizingMaskIntoConstraints = false
-        let buttonOnTheRight: UIButton
+        let buttonOnTheRight: UIButton?
         let trailingMargin: CGFloat
         
         if showSaveButton {
@@ -380,7 +389,7 @@ final class EditorView: UIView, MovableViewCanvasDelegate, MediaPlayerViewDelega
         
         NSLayoutConstraint.activate([
             collectionContainer.leadingAnchor.constraint(equalTo: safeAreaLayoutGuide.leadingAnchor),
-            collectionContainer.trailingAnchor.constraint(equalTo: buttonOnTheRight.leadingAnchor, constant: -trailingMargin / 2),
+            collectionContainer.trailingAnchor.constraint(equalTo: buttonOnTheRight?.leadingAnchor ?? navigationContainer.trailingAnchor, constant: -trailingMargin / 2),
             collectionContainer.centerYAnchor.constraint(equalTo: confirmOrPostButton().centerYAnchor),
             collectionContainer.heightAnchor.constraint(equalToConstant: EditionMenuCollectionView.height)
         ])

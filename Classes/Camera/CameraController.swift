@@ -373,7 +373,8 @@ public class CameraController: UIViewController, MediaClipsEditorDelegate, Camer
     }
 
     private func createEditorViewController(_ segments: [CameraSegment], selected: Array<CameraSegment>.Index) -> EditorViewController {
-        let controller = EditorViewController(settings: settings,
+        let controller = EditorViewController(delegate: self,
+                                              settings: settings,
                                               segments: segments,
                                               assetsHandler: segmentsHandler,
                                               exporterClass: MediaExporter.self,
@@ -387,15 +388,7 @@ public class CameraController: UIViewController, MediaClipsEditorDelegate, Camer
     }
 
     private func createStoryViewController(_ segments: [CameraSegment], selected: Int) -> MultiEditorViewController {
-        let controller = MultiEditorViewController(settings: settings,
-                                                     segments: segments,
-                                                     assetsHandler: segmentsHandler,
-                                                     exporterClass: MediaExporter.self,
-                                                     gifEncoderClass: GIFEncoderImageIO.self,
-                                                     cameraMode: currentMode,
-                                                     stickerProvider: stickerProvider,
-                                                     analyticsProvider: analyticsProvider,
-                                                     quickBlogSelectorCoordinator: quickBlogSelectorCoordinator,
+        let controller = MultiEditorViewController(segments: segments,
                                                      delegate: self,
                                                      selected: selected)
         return controller
